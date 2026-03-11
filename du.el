@@ -76,8 +76,12 @@ Takes the command output string and returns a list of cell rows.")
 (defvar du--render-buffer-name "*du*"
   "Name of the buffer used to display the disk usage table.")
 
-(defvar du--sort-col (nth 0 du-headers)
+(defvar-local du--sort-col (nth 0 du-headers)
   "Current header used for sorting the table data.")
+
+(defvar-local du--ctbl-model nil
+  "Ctable model instance for the current disk usage table.
+Stores the rendered table state including column configuration and data rows.")
 
 ;;; Internal Functions
 
@@ -142,16 +146,22 @@ Binds the `du-actions' transient menu to click events."
   (with-current-buffer (get-buffer-create (format "%s: %s"du--render-buffer-name default-directory))
     (let* ((column-model (mapcar #'du-header-cmodel du-headers))
            (data (du--to-ctable-data du-data))
-           (model ; data model
-            (make-ctbl:model
-             :column-model column-model :data data))
            (component)
            (inhibit-read-only t))
       (erase-buffer)
-      (setq component (ctbl:create-table-component-region :model model))
+      (setq-local du--ctbl-model (make-ctbl:model :column-model column-model :data data))
+      (setq component (ctbl:create-table-component-region :model du--ctbl-model))
       (ctbl:cp-add-click-hook component #'du-actions))
     (setq buffer-read-only t)
     (switch-to-buffer (current-buffer))))
+
+;;; Interactive Functions
+(defun du-refresh ()
+  "Refresh the ctable display with the current table model.
+Updates the ctable component region to reflect changes in `du--ctbl-model',
+such as after deleting a file or re-sorting the data."
+  (interactive)
+  (ctbl:cp-set-model (ctbl:cp-get-component) du--ctbl-model))
 
 (defun du (&optional directory callback)
   "Run disk usage analysis on DIRECTORY and display results.
@@ -199,12 +209,16 @@ table view after successful deletion."
          (row (ctbl:cp-get-selected-data-row cp))
          (cells (mapcar #'du--cell row))
          (path-cell (find-if (lambda (cell) (equal 'path (du-header-title (du-cell-header cell)))) cells))
+         (column-model (ctbl:model-column-model du--ctbl-model))
+         (data (ctbl:model-data du--ctbl-model))
          (path (du-cell-value path-cell)))
     (when (yes-or-no-p (format "Are you sure to delete [%s]" path))
       (if (f-directory-p path)
           (delete-directory path t)
         (delete-file path))
-      (du))))
+      (setq-local du--ctbl-model
+                  (make-ctbl:model :column-model column-model :data (delete row data)))
+      (du-refresh))))
 
 (defun du-enter ()
   "Navigate into the directory at the selected table row.
