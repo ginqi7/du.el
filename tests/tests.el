@@ -21,4 +21,4 @@
 
 (load-dependencies-path)
 
-(require 'du.el)
+(require 'du)
