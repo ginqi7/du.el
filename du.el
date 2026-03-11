@@ -51,17 +51,20 @@ FORMATTER function to display cell values, and SORTER function for comparison.")
 The command is split and executed with the target directory appended.")
 
 (defcustom du-headers
-  (list (du-header :title 'size :cmodel (make-ctbl:cmodel :title "Size" :min-width 5 :align 'right)
-                   :parser (lambda (str) (string-to-number str))
+  (list (du-header :title 'size :cmodel (make-ctbl:cmodel :title "Size" :align 'right)
+                   :parser (lambda (str) (string-to-number (car (split-string str "\t+"))))
                    :formatter (lambda (cell) (file-size-human-readable (du-cell-value cell) 'si))
                    :sorter (lambda (cell1 cell2) (< (du-cell-value cell1) (du-cell-value cell2))))
-        (du-header :title 'path :cmodel (make-ctbl:cmodel :title "Path" :min-width 5 :align 'left)
-                   :parser (lambda (str) (format "%s" str))
+        (du-header :title 'path :cmodel (make-ctbl:cmodel :title "Path" :align 'left)
+                   :parser (lambda (str) (nth 1 (split-string str "\t+")))
+                   :formatter (lambda (cell) (format "%s" (du-cell-value cell))))
+        (du-header :title 'type :cmodel (make-ctbl:cmodel :title "Type" :align 'left)
+                   :parser (lambda (str) (if (file-directory-p (format "%s" (nth 1 (split-string str "\t+")))) "Dir" "File"))
                    :formatter (lambda (cell) (format "%s" (du-cell-value cell)))))
   "List of `du-header' objects defining table columns.
 Each header specifies how to parse, format, and sort its column data.")
 
-(defcustom du-output-parser #'du-output-default-parser
+(defcustom du-output-parser #'du--output-default-parser
   "Function to parse raw `du' command output into structured data.
 Takes the command output string and returns a list of cell rows.")
 
@@ -93,16 +96,14 @@ the underlying `du-cell' object from its text property."
                     (get-text-property (point-min) 'du-cell))))
     du-cell))
 
-(defun du-output-default-parser (output)
+(defun du--output-default-parser (output)
   "Parse OUTPUT from `du' command into a list of cell rows.
 Each line is split by tabs, and each part is parsed into a `du-cell' object
 using the corresponding header's parser function."
   (let* ((lines (split-string output "\n" t))
          (result
           (mapcar (lambda (line)
-                    (let ((parts (split-string line "\t+")))
-                      (mapcar (lambda (idx) (du-cell--build :header (nth idx du-headers) :str (nth idx parts)))
-                              (number-sequence 0 (1- (length du-headers))))))
+                    (mapcar (lambda (header) (du-cell--build :header header :str line)) du-headers))
                   lines)))
     result))
 
@@ -135,18 +136,19 @@ by the path/title field.")
   "Display DU-DATA in a ctable buffer.
 Creates a ctable model from the data and displays it in `du--render-buffer-name'.
 Binds the `du-actions' transient menu to click events."
-  (let* ((column-model (mapcar #'du-header-cmodel du-headers))
-         (data (du--to-ctable-data du-data))
-         (model ; data model
-          (make-ctbl:model
-           :column-model column-model :data data))
-         (component ; ctable component
-          (with-current-buffer (get-buffer-create (format "%s: %s"du--render-buffer-name default-directory))
-            (erase-buffer)
-            (ctbl:create-table-component-region
-             :model model))))
-    (ctbl:cp-add-click-hook component #'du-actions)
-    (switch-to-buffer (get-buffer-create (format "%s: %s"du--render-buffer-name default-directory)))))
+  (with-current-buffer (get-buffer-create (format "%s: %s"du--render-buffer-name default-directory))
+    (let* ((column-model (mapcar #'du-header-cmodel du-headers))
+           (data (du--to-ctable-data du-data))
+           (model ; data model
+            (make-ctbl:model
+             :column-model column-model :data data))
+           (component)
+           (inhibit-read-only t))
+      (erase-buffer)
+      (setq component (ctbl:create-table-component-region :model model))
+      (ctbl:cp-add-click-hook component #'du-actions))
+    (setq buffer-read-only t)
+    (switch-to-buffer (current-buffer))))
 
 (defun du (&optional directory callback)
   "Run disk usage analysis on DIRECTORY and display results.
@@ -157,6 +159,7 @@ and passes the parsed results to CALLBACK (defaults to `du-ctable-show')."
     (setq default-directory (expand-file-name directory)))
   (let* ((dir default-directory)
          (buffer (generate-new-buffer " *du-output*")))
+    (print (append (split-string du-command) (list dir)))
     (unless callback
       (setq callback #'du-ctable-show))
     (make-process
