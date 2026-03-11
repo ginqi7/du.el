@@ -1,0 +1,71 @@
+#+title: Disk Usage
+#+author: Qiqi Jin
+#+language: en
+
+#+HTML: <a href ="https://github.com/ginqi7/du.el/blob/master/README.zh-CN.org"><img src="https://img.shields.io/badge/README-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-555555.svg"/></a>
+
+* Overview
+
+* Prerequisites
+
+** Install
++ clone the project in your own emacs configuration files directory, like:
+  #+BEGIN_SRC sh
+    git clone https://github.com/ginqi7/du.el ~/.emacs.d/lisp/du.el;
+  #+END_SRC
+
++ add the path to 'load-path'
+  #+BEGIN_SRC emacs-lisp
+    (add-to-list 'load-path "~/.emacs.d/lisp/du.el")
+  #+END_SRC
+
+* Configuration
+Here are a few variables that can be used for configuration:
+#+BEGIN_SRC emacs-lisp
+  (require 'du.el)
+#+end_src
+
+** Variables
+| variable | default value | explain |
+|----------+---------------+---------|
+| ~du-command~ | ~"du -b --max-depth=1"~ | Shell command to list disk usage |
+| ~du-headers~ | ~(list size path)~ | List of column definitions (title, parser, formatter, sorter) |
+| ~du-output-parser~ | ~#'du-output-default-parser~ | Function to parse raw ~du~ command output |
+
+* Features
+
+- Interactive table view powered by ~ctable~
+- Human-readable file size display (SI units)
+- Sort by any column (size, path)
+- Navigate into subdirectories with ~RET~
+- Delete files/directories with ~d~
+- Asynchronous command execution
+
+* Example
+
+#+BEGIN_SRC emacs-lisp
+  ;; Run interactively - prompts for directory
+  M-x du
+
+  ;; Run programmatically
+  (du "~/projects")
+
+  ;; Customize the command (e.g., human-readable sizes from shell)
+  (setq du-command "du -h --max-depth=1")
+
+  ;; Add custom columns
+  (setq du-headers
+        (list (du-header :title 'size ...)))
+#+END_SRC
+
+* Keybindings
+
+In the ~*du*~ buffer:
+
+| Key | Command | Description |
+|-----+---------+-------------|
+| ~RET~ | ~du-enter~ | Navigate into selected directory |
+| ~d~ | ~du-delete~ | Delete selected file/directory |
+| ~s~ | ~du-sort~ | Sort table by selected column |
+
+* Footnotes

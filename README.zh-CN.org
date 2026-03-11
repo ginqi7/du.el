@@ -1,0 +1,72 @@
+#+title: Disk Usage
+#+author: Qiqi Jin
+#+language: zh
+
+* 概述
+
+* 前提
+
+** 需要的 Emacs 包
+
+** 安装
++ 克隆项目到你自己的 Emacs 配置目录下：
+#+BEGIN_SRC sh
+  git clone https://github.com/ginqi7/du.el ~/.emacs.d/lisp/du.el;
+#+END_SRC
+
++ 把克隆的路径添加到 =load-path= 当中
+#+BEGIN_SRC emacs-lisp
+  (add-to-list 'load-path "~/.emacs.d/lisp/du.el")
+#+END_SRC
+
+* 配置
+
+#+BEGIN_SRC emacs-lisp
+  (require 'du.el)
+#+end_src
+
+** 变量
+
+| 变量 | 默认值 | 解释 |
+|------+--------+------|
+| ~du-command~ | ~"du -b --max-depth=1"~ | 用于列出磁盘使用的 shell 命令 |
+| ~du-headers~ | ~(list size path)~ | 列定义列表（标题、解析器、格式化器、排序器） |
+| ~du-output-parser~ | ~#'du-output-default-parser~ | 解析原始 ~du~ 命令输出的函数 |
+
+* 特性
+
+- 由 ~ctable~ 支持的交互式表格视图
+- 人类可读的文件大小显示（SI 单位）
+- 按任意列排序（大小、路径）
+- 按 ~RET~ 进入子目录
+- 按 ~d~ 删除文件/目录
+- 异步命令执行
+
+* 示例
+
+#+BEGIN_SRC emacs-lisp
+  ;; 交互式运行 - 提示输入目录
+  M-x du
+
+  ;; 编程方式运行
+  (du "~/projects")
+
+  ;; 自定义命令（例如，使用 shell 输出人类可读的大小）
+  (setq du-command "du -h --max-depth=1")
+
+  ;; 添加自定义列
+  (setq du-headers
+        (list (du-header :title 'size ...)))
+#+END_SRC
+
+* 快捷键
+
+在 ~*du*~ 缓冲区中：
+
+| 键 | 命令 | 描述 |
+|----+-------+------|
+| ~RET~ | ~du-enter~ | 进入选中的目录 |
+| ~d~ | ~du-delete~ | 删除选中的文件/目录 |
+| ~s~ | ~du-sort~ | 按选中的列排序表格 |
+
+* Footnotes
