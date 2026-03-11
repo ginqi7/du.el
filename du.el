@@ -46,7 +46,7 @@ FORMATTER function to display cell values, and SORTER function for comparison.")
 
 ;;; Custom Variables
 
-(defcustom du-command "du -b --max-depth=1"
+(defcustom du-command "du -a -b --max-depth=1"
   "Shell command used to list disk usage.
 The command is split and executed with the target directory appended.")
 
